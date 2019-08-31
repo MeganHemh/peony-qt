@@ -1,3 +1,9 @@
+peony-qt (0.9.1) eoan; urgency=medium
+
+  * adapt for breadcrumb path bar control building.
+
+ -- Yue Lan <lanyue@kylinos.cn>  Sat, 31 Aug 2019 14:57:01 +0800
+
 peony-qt (0.9) eoan; urgency=medium
 
   * improve the search vfs function. update version to v0.9.
