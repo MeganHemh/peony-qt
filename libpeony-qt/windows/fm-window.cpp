@@ -19,6 +19,8 @@
 #include "file-utils.h"
 #include "file-info.h"
 
+#include "file-operation-manager.h"
+
 #include <QDockWidget>
 #include <QStandardPaths>
 #include <QDebug>
@@ -67,10 +69,9 @@ FMWindow::FMWindow(const QString &uri, QWidget *parent) : QMainWindow (parent)
     m_tab = new TabPage(this);
     m_tab->addPage(uri);
 
-    m_side_bar = new SideBar(this);
     m_filter = new QWidget(this);
-
     m_splitter->addWidget(m_filter);
+    m_side_bar = new SideBar(this);
     m_splitter->addWidget(m_side_bar);
     m_splitter->addWidget(m_tab);
     m_splitter->setStretchFactor(0, 0);
@@ -318,11 +319,26 @@ FMWindow::FMWindow(const QString &uri, QWidget *parent) : QMainWindow (parent)
     addAction(stopLoadingAction);
     connect(stopLoadingAction, &QAction::triggered, this, &FMWindow::forceStopLoading);
 
+
     //show hidden action
     QAction *showHiddenAction = new QAction(this);
     showHiddenAction->setShortcut(QKeySequence(tr("Ctrl+H", "Show|Hidden")));
     addAction(showHiddenAction);
     connect(showHiddenAction, &QAction::triggered, this, &FMWindow::setShowHidden);
+
+    auto undoAction = new QAction(QIcon::fromTheme("edit-undo-symbolic"), tr("Undo"), this);
+    undoAction->setShortcut(QKeySequence::Undo);
+    addAction(undoAction);
+    connect(undoAction, &QAction::triggered, [=](){
+        FileOperationManager::getInstance()->undo();
+    });
+
+    auto redoAction = new QAction(QIcon::fromTheme("edit-redo-symbolic"), tr("Redo"), this);
+    redoAction->setShortcut(QKeySequence::Redo);
+    addAction(redoAction);
+    connect(redoAction, &QAction::triggered, [=](){
+        FileOperationManager::getInstance()->redo();
+    });
 
     //menu
     m_tab->connect(m_tab, &TabPage::menuRequest, [=](const QPoint &pos){
