@@ -21,6 +21,9 @@
 
 #include "file-operation-manager.h"
 
+#include "preview-page-plugin-iface.h"
+#include "preview-page-factory-manager.h"
+
 #include <QDockWidget>
 #include <QStandardPaths>
 #include <QDebug>
@@ -354,7 +357,39 @@ FMWindow::FMWindow(const QString &uri, QWidget *parent) : QMainWindow (parent)
             m_advance_target_path = uri;
         else
             m_advance_target_path = "file://" + uri;
+     });
+     
+    //preview page
+    connect(m_navigation_bar, &NavigationBar::switchPreviewPageRequest,
+            this, &FMWindow::onPreviewPageSwitch);
+    connect(m_tab, &TabPage::currentSelectionChanged, [=](){
+        if (m_preview_page) {
+            auto selection = getCurrentSelections();
+            if (!selection.isEmpty()) {
+                m_preview_page->cancel();
+                m_preview_page->prepare(selection.first());
+                m_preview_page->startPreview();
+            } else {
+                m_preview_page->cancel();
+            }
+        }
     });
+    connect(m_tab, &TabPage::currentLocationChanged, [=](){
+        if (m_preview_page) {
+            m_preview_page->cancel();
+        }
+    });
+    connect(m_tab, &TabPage::currentActiveViewChanged, [=](){
+        if (m_preview_page) {
+            auto selection = getCurrentSelections();
+            if (selection.isEmpty()) {
+                m_preview_page->cancel();
+            } else {
+                m_preview_page->prepare(selection.first());
+                m_preview_page->startPreview();
+            }
+        }
+    };
 }
 
 const QString FMWindow::getCurrentUri()
@@ -515,4 +550,27 @@ void FMWindow::forceStopLoading()
 {
     m_tab->getActivePage()->stopLoading();
     m_is_loading = false;
+}
+
+void FMWindow::onPreviewPageSwitch(const QString &id)
+{
+    if (id.isNull()) {
+        PreviewPageIface *page = dynamic_cast<PreviewPageIface*>(m_splitter->widget(2));
+        if (page) {
+            page->closePreviewPage();
+            m_preview_page = nullptr;
+        }
+    } else {
+        PreviewPageIface *page = dynamic_cast<PreviewPageIface*>(m_splitter->widget(2));
+        if (page) {
+            page->closePreviewPage();
+        }
+        page = PreviewPageFactoryManager::getInstance()->getPlugin(id)->createPreviewPage();
+        m_splitter->addWidget(dynamic_cast<QWidget*>(page));
+        if (!getCurrentSelections().isEmpty()) {
+            page->prepare(getCurrentSelections().first());
+            page->startPreview();
+        }
+        m_preview_page = page;
+    }
 }

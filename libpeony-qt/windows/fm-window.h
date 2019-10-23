@@ -27,6 +27,8 @@ class DirectoryViewContainer;
 
 class FileInfo;
 
+class PreviewPageIface;
+
 /*!
  * \brief The FMWindow class, the normal window of peony-qt's file manager.
  * \details
@@ -96,6 +98,8 @@ public Q_SLOTS:
     void filterUpdate();
     void setShowHidden();
 
+    void onPreviewPageSwitch(const QString &uri);
+
 protected:
     void resizeEvent(QResizeEvent *e) override;
 
@@ -134,6 +138,8 @@ private:
 
     QString m_last_non_search_location;
     QString m_advance_target_path;
+    
+    PreviewPageIface *m_preview_page = nullptr;
 };
 
 }
