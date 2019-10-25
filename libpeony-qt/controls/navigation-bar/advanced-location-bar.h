@@ -23,6 +23,7 @@ Q_SIGNALS:
 
 public Q_SLOTS:
     void updateLocation(const QString &uri);
+    QString get_text() {return m_text;};
 
 private:
     QStackedLayout *m_layout;

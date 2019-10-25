@@ -3,9 +3,12 @@
 
 #include <QMainWindow>
 #include "peony-core_global.h"
+#include "advanced-location-bar.h"
 #include <memory>
 
 #include <QTimer>
+#include <QLineEdit>
+#include <QComboBox>
 
 class QSplitter;
 
@@ -85,9 +88,21 @@ public Q_SLOTS:
 
     void refresh();
     void forceStopLoading();
+    void advanceSearch();
+    void clearRecord();
+    void browsePath();
+    void searchFilter();
+    void filterUpdate();
+
 
 protected:
     void resizeEvent(QResizeEvent *e) override;
+
+public:
+    //advance search filter options
+    QStringList m_file_type_list = {"all", "file folder", "image", "video", "text file", "audio", "others"};
+    QStringList m_file_mtime_list = {"all", "today", "this week", "this month", "this year", "year ago"};
+    QStringList m_file_size_list = {"all", "tiny(0-16K)", "small(16k-1M)", "medium(1M-100M)", "big(100M-1G)","large(>1G)"};
 
 private:
     QSplitter *m_splitter;
@@ -99,10 +114,18 @@ private:
     SearchBar *m_search_bar;
     StatusBar *m_status_bar;
 
+    QWidget *m_filter;
+    QLineEdit *m_advanced_key;
+    QComboBox *typeViewCombox, *timeViewCombox, *sizeViewCombox;
+    AdvancedLocationBar *m_advance_bar;
+
     QTimer m_operation_minimum_interval;
     bool m_is_loading = false;
+    bool m_filter_visible;
+    bool m_update_condition = false;
 
     QString m_last_non_search_location;
+    QString m_advance_target_path;
 };
 
 }
