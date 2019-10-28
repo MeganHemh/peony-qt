@@ -7,6 +7,7 @@
 #include "file-operation-utils.h"
 
 #include "view-factory-model.h"
+#include "view-factory-sort-filter-model.h"
 #include "directory-view-container.h"
 
 #include <QAction>
@@ -14,6 +15,8 @@
 #include <QPushButton>
 
 #include <QStandardPaths>
+
+#include <QMessageBox>
 
 #include <QDebug>
 
@@ -47,17 +50,22 @@ void ToolBar::init(bool hasTopWindow)
     QComboBox *viewCombox = new QComboBox(this);
     viewCombox->setToolTip(tr("Change Directory View"));
     m_view_option_box = viewCombox;
-    auto model = new ViewFactoryModel(this);
+    auto model = new ViewFactorySortFilterModel(this);
     m_view_factory_model = model;
     model->setDirectoryUri("file://" + QStandardPaths::writableLocation(QStandardPaths::HomeLocation));
     viewCombox->setModel(model);
 
     addWidget(viewCombox);
+    connect(viewCombox, QOverload<int>::of(&QComboBox::currentIndexChanged), [=](int index){
+        auto viewId = viewCombox->itemData(index, Qt::ToolTipRole).toString();
+        m_top_window->beginSwitchView(viewId);
+    });
 
     addSeparator();
 
     //file operations
     QAction *copyAction = addAction(QIcon::fromTheme("edit-copy-symbolic"), tr("&Copy"));
+    copyAction->setShortcut(QKeySequence::Copy);
 
     QAction *pasteAction = addAction(QIcon::fromTheme("edit-paste-symbolic"), tr("Paste"));
     pasteAction->setShortcut(QKeySequence::Paste);
@@ -83,10 +91,18 @@ void ToolBar::init(bool hasTopWindow)
 
     //trash
     m_clean_trash_action = addAction(QIcon::fromTheme("edit-clear-symbolic"), tr("Clean Trash"), [=](){
-        //FIXME:
+        auto result = QMessageBox::question(nullptr, tr("Delete Permanently"), tr("Are you sure that you want to delete these files? "
+                                                                                  "Once you start a deletion, the files deleting will never be "
+                                                                                  "restored again."));
+        if (result == QMessageBox::Yes) {
+            auto uris = m_top_window->getCurrentAllFileUris();
+            qDebug()<<uris;
+            FileOperationUtils::remove(uris);
+        }
     });
+
     m_restore_action = addAction(QIcon::fromTheme("view-refresh-symbolic"), tr("Restore"), [=](){
-        //FIXME:
+        FileOperationUtils::restore(m_top_window->getCurrentSelections());
     });
 
     //connect signal
@@ -123,6 +139,7 @@ void ToolBar::init(bool hasTopWindow)
         if (!m_top_window->getCurrentSelections().isEmpty())
             ClipboardUtils::setClipboardFiles(m_top_window->getCurrentSelections(), false);
     });
+
     connect(pasteAction, &QAction::triggered, [=](){
         if (ClipboardUtils::isClipboardHasFiles()) {
             //FIXME: how about duplicated copy?
@@ -157,16 +174,9 @@ void ToolBar::updateLocation(const QString &uri)
     }
 
     m_view_factory_model->setDirectoryUri(uri);
-    qDebug()<<m_view_factory_model->getHighestPriorityViewId();
-    if (!m_view_factory_model->getHighestPriorityViewId().isEmpty()) {
-        //FIXME: switch to highest priority's view
-    } else {
-        //FIXME: use default view
-    }
 
-    auto viewFactoryManager = DirectoryViewFactoryManager::getInstance();
-    auto defaultViewId = viewFactoryManager->getDefaultViewId();
-    auto index = m_view_factory_model->getIndexFromViewId(defaultViewId);
+    auto viewId = m_top_window->getCurrentPage()->getProxy()->getView()->viewId();
+    auto index = m_view_factory_model->getIndexFromViewId(viewId);
     if (index.isValid())
         m_view_option_box->setCurrentIndex(index.row());
     else {

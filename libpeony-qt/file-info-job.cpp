@@ -169,6 +169,8 @@ void FileInfoJob::refreshInfoContents(GFileInfo *new_info)
     info->m_can_trash = g_file_info_get_attribute_boolean(new_info, G_FILE_ATTRIBUTE_ACCESS_CAN_TRASH);
     info->m_can_rename = g_file_info_get_attribute_boolean(new_info, G_FILE_ATTRIBUTE_ACCESS_CAN_RENAME);
 
+    info->m_is_virtual = g_file_info_get_attribute_boolean(new_info, G_FILE_ATTRIBUTE_STANDARD_IS_VIRTUAL);
+
     info->m_display_name = QString (g_file_info_get_display_name(new_info));
     GIcon *g_icon = g_file_info_get_icon (new_info);
     if (G_IS_ICON(g_icon)) {
@@ -194,6 +196,7 @@ void FileInfoJob::refreshInfoContents(GFileInfo *new_info)
     info->m_modified_time = g_file_info_get_attribute_uint64(new_info, G_FILE_ATTRIBUTE_TIME_MODIFIED);
 
     const char *content_type_str = g_file_info_get_content_type (new_info);
+    info->m_mime_type_string = content_type_str;
     if (content_type_str) {
         char *content_type = g_content_type_get_description (content_type_str);
         info->m_file_type = content_type;

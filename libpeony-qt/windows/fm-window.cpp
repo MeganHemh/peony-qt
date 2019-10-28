@@ -19,6 +19,11 @@
 #include "file-utils.h"
 #include "file-info.h"
 
+#include "file-operation-manager.h"
+
+#include "preview-page-plugin-iface.h"
+#include "preview-page-factory-manager.h"
+
 #include <QDockWidget>
 #include <QStandardPaths>
 #include <QDebug>
@@ -73,8 +78,12 @@ FMWindow::FMWindow(const QString &uri, QWidget *parent) : QMainWindow (parent)
     m_splitter->addWidget(m_filter);
     m_splitter->addWidget(m_side_bar);
     m_splitter->addWidget(m_tab);
+<<<<<<< HEAD
     m_splitter->setStretchFactor(0, 0);
     m_splitter->setStretchFactor(1, 0);
+=======
+    m_splitter->setStretchFactor(1, 1);
+>>>>>>> 813b7c4e285f5111d98e2e2ee3c75746496234a7
     m_splitter->setStretchFactor(2, 1);
 
     m_tool_bar = new ToolBar(this, this);
@@ -89,6 +98,10 @@ FMWindow::FMWindow(const QString &uri, QWidget *parent) : QMainWindow (parent)
     m_clear_record->setText("清空记录");
     m_clear_record->setFixedWidth(80);
     m_clear_record->setDisabled(true);
+
+    m_preview_page_container = new PreviewPageContainer(this);
+    m_splitter->addWidget(m_preview_page_container);
+    m_preview_page_container->hide();
 
     //put the tool bar and search bar into
     //a hobx-layout widget, and put the widget int a
@@ -266,6 +279,7 @@ FMWindow::FMWindow(const QString &uri, QWidget *parent) : QMainWindow (parent)
         qDebug()<<this->getCurrentUri();
         m_navigation_bar->updateLocation(getCurrentUri());
         m_tool_bar->updateLocation(getCurrentUri());
+        m_tool_bar->updateStates();
     });
 
     //selection changed
@@ -292,6 +306,7 @@ FMWindow::FMWindow(const QString &uri, QWidget *parent) : QMainWindow (parent)
 
     //view switched
     connect(m_tab, &TabPage::viewTypeChanged, [=](){
+        m_tool_bar->updateLocation(getCurrentUri());
         m_tool_bar->updateStates();
     });
 
@@ -316,11 +331,27 @@ FMWindow::FMWindow(const QString &uri, QWidget *parent) : QMainWindow (parent)
     addAction(stopLoadingAction);
     connect(stopLoadingAction, &QAction::triggered, this, &FMWindow::forceStopLoading);
 
+<<<<<<< HEAD
     //show hidden action
     QAction *showHiddenAction = new QAction(this);
     showHiddenAction->setShortcut(QKeySequence(tr("Ctrl+H", "Show|Hidden")));
     addAction(showHiddenAction);
     connect(showHiddenAction, &QAction::triggered, this, &FMWindow::setShowHidden);
+=======
+    auto undoAction = new QAction(QIcon::fromTheme("edit-undo-symbolic"), tr("Undo"), this);
+    undoAction->setShortcut(QKeySequence::Undo);
+    addAction(undoAction);
+    connect(undoAction, &QAction::triggered, [=](){
+        FileOperationManager::getInstance()->undo();
+    });
+
+    auto redoAction = new QAction(QIcon::fromTheme("edit-redo-symbolic"), tr("Redo"), this);
+    redoAction->setShortcut(QKeySequence::Redo);
+    addAction(redoAction);
+    connect(redoAction, &QAction::triggered, [=](){
+        FileOperationManager::getInstance()->redo();
+    });
+>>>>>>> 813b7c4e285f5111d98e2e2ee3c75746496234a7
 
     //menu
     m_tab->connect(m_tab, &TabPage::menuRequest, [=](const QPoint &pos){
@@ -330,12 +361,45 @@ FMWindow::FMWindow(const QString &uri, QWidget *parent) : QMainWindow (parent)
         menu.exec(pos);
     });
 
+<<<<<<< HEAD
     //advance search change Location
     connect(m_advance_bar, &AdvancedLocationBar::updateWindowLocationRequest, [=](const QString &uri){
         if (uri.contains("file://"))
             m_advance_target_path = uri;
         else
             m_advance_target_path = "file://" + uri;
+=======
+    //preview page
+    connect(m_navigation_bar, &NavigationBar::switchPreviewPageRequest,
+            this, &FMWindow::onPreviewPageSwitch);
+    connect(m_tab, &TabPage::currentSelectionChanged, [=](){
+        if (m_preview_page_container->getCurrentPage()) {
+            auto selection = getCurrentSelections();
+            if (!selection.isEmpty()) {
+                m_preview_page_container->getCurrentPage()->cancel();
+                m_preview_page_container->getCurrentPage()->prepare(selection.first());
+                m_preview_page_container->getCurrentPage()->startPreview();
+            } else {
+                m_preview_page_container->getCurrentPage()->cancel();
+            }
+        }
+    });
+    connect(m_tab, &TabPage::currentLocationChanged, [=](){
+        if (m_preview_page_container->getCurrentPage()) {
+            m_preview_page_container->getCurrentPage()->cancel();
+        }
+    });
+    connect(m_tab, &TabPage::currentActiveViewChanged, [=](){
+        if (m_preview_page_container->getCurrentPage()) {
+            auto selection = getCurrentSelections();
+            if (selection.isEmpty()) {
+                m_preview_page_container->getCurrentPage()->cancel();
+            } else {
+                m_preview_page_container->getCurrentPage()->prepare(selection.first());
+                m_preview_page_container->getCurrentPage()->startPreview();
+            }
+        }
+>>>>>>> 813b7c4e285f5111d98e2e2ee3c75746496234a7
     });
 }
 
@@ -497,4 +561,58 @@ void FMWindow::forceStopLoading()
 {
     m_tab->getActivePage()->stopLoading();
     m_is_loading = false;
+}
+
+void FMWindow::onPreviewPageSwitch(const QString &id)
+{
+    if (id.isNull()) {
+        PreviewPageIface *page = m_preview_page_container->getCurrentPage();
+        if (page) {
+            m_preview_page_container->removePage(page);
+        }
+    } else {
+        auto oldPage = m_preview_page_container->getCurrentPage();
+        PreviewPageIface *page = PreviewPageFactoryManager::getInstance()->getPlugin(id)->createPreviewPage();
+        m_preview_page_container->setCurrentPage(page);
+        m_preview_page_container->removePage(oldPage);
+        //emit selection changed signal manually for starting a preview with new page.
+        Q_EMIT m_tab->currentSelectionChanged();
+    }
+}
+
+//preview page container
+PreviewPageContainer::PreviewPageContainer(QWidget *parent) : QStackedWidget (parent)
+{
+    setMinimumWidth(300);
+}
+
+void PreviewPageContainer::setCurrentPage(PreviewPageIface *page)
+{
+    if (count() > 0) {
+        PreviewPageIface *oldPage = getCurrentPage();
+        if (oldPage) {
+            removePage(oldPage);
+        }
+    }
+
+    addWidget(dynamic_cast<QWidget*>(page));
+    setCurrentWidget(dynamic_cast<QWidget*>(page));
+    dynamic_cast<QWidget*>(page)->show();
+    show();
+}
+
+void PreviewPageContainer::removePage(PreviewPageIface *page)
+{
+    if (!page)
+        return;
+    removeWidget(dynamic_cast<QWidget*>(page));
+    if (count() == 0) {
+        hide();
+    }
+    page->closePreviewPage();
+}
+
+PreviewPageIface *PreviewPageContainer::getCurrentPage()
+{
+    return dynamic_cast<PreviewPageIface*>(currentWidget());
 }

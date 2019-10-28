@@ -2,6 +2,8 @@
 #include "menu-plugin-iface.h"
 #include "file-info.h"
 
+#include "file-info-manager.h"
+
 #include <QDebug>
 #include <QDir>
 #include <QPluginLoader>
@@ -48,6 +50,13 @@
 #include "icon-view.h"
 
 #include "plugin-manager.h"
+
+#include "list-view.h"
+
+#include "basic-properties-page.h"
+
+#include "file-count-operation.h"
+#include <QThreadPool>
 
 PeonyApplication::PeonyApplication(int &argc, char *argv[]) : QApplication (argc, argv)
 {
@@ -303,13 +312,6 @@ PeonyApplication::PeonyApplication(int &argc, char *argv[]) : QApplication (argc
     w->show();
 #endif
 
-#define FM_WINDOW
-#ifdef FM_WINDOW
-    auto window = new Peony::FMWindow("file:///");
-    window->setAttribute(Qt::WA_DeleteOnClose);
-    window->show();
-#endif
-
 //#define MENU
 #ifdef MENU
     Peony::DirectoryView::IconView *view = new Peony::DirectoryView::IconView;
@@ -317,5 +319,48 @@ PeonyApplication::PeonyApplication(int &argc, char *argv[]) : QApplication (argc
     view->beginLocationChange();
     view->setContextMenuPolicy(Qt::CustomContextMenu);
     view->show();
+#endif
+
+//#define LIST_VIEW
+#ifdef LIST_VIEW
+    Peony::DirectoryView::ListView *listView = new Peony::DirectoryView::ListView;
+    auto model = new Peony::FileItemModel;
+    auto proxyModel = new Peony::FileItemProxyFilterSortModel;
+
+    listView->bindModel(model, proxyModel);
+    listView->setDirectoryUri("file:///");
+    listView->beginLocationChange();
+
+    listView->show();
+#endif
+
+//#define BASIC_PROPERTIES_PAGE
+#ifdef BASIC_PROPERTIES_PAGE
+    Peony::BasicPropertiesPage *p = new Peony::BasicPropertiesPage("file:///");
+    p->show();
+#endif
+
+//#define FILE_COUNT_OPERATION
+#ifdef FILE_COUNT_OPERATION
+    QStringList l;
+    l<<"file:///home";
+    auto op = new Peony::FileCountOperation(l);
+    QThreadPool::globalInstance()->start(op);
+
+    connect(op, &Peony::FileCountOperation::operationPreparedOne, [=](const QString &uri){
+        qDebug()<<uri;
+    });
+
+    connect(op, &Peony::FileCountOperation::operationFinished, [=](){
+        qDebug()<<"finished";
+        Peony::FileInfoManager::getInstance()->showState();
+    });
+#endif
+
+#define FM_WINDOW
+#ifdef FM_WINDOW
+    auto window = new Peony::FMWindow("file:///");
+    window->setAttribute(Qt::WA_DeleteOnClose);
+    window->show();
 #endif
 }

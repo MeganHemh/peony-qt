@@ -11,6 +11,8 @@
 #include <QComboBox>
 #include <QPushButton>
 
+#include <QStackedWidget>
+
 class QSplitter;
 
 namespace Peony {
@@ -26,6 +28,9 @@ class DirectoryViewProxyIface;
 class DirectoryViewContainer;
 
 class FileInfo;
+
+class PreviewPageIface;
+class PreviewPageContainer;
 
 /*!
  * \brief The FMWindow class, the normal window of peony-qt's file manager.
@@ -96,6 +101,8 @@ public Q_SLOTS:
     void filterUpdate();
     void setShowHidden();
 
+    void onPreviewPageSwitch(const QString &uri);
+
 protected:
     void resizeEvent(QResizeEvent *e) override;
 
@@ -133,7 +140,24 @@ private:
     bool m_show_hidden_file = false;
 
     QString m_last_non_search_location;
+<<<<<<< HEAD
     QString m_advance_target_path;
+=======
+
+    PreviewPageContainer *m_preview_page_container = nullptr;
+};
+
+class PreviewPageContainer : public QStackedWidget
+{
+    friend class FMWindow;
+    Q_OBJECT
+    explicit PreviewPageContainer(QWidget *parent = nullptr);
+
+    void setCurrentPage(PreviewPageIface *page);
+    void removePage(PreviewPageIface *page);
+    PreviewPageIface *getCurrentPage();
+    bool isHidden() {return isVisible();}
+>>>>>>> 813b7c4e285f5111d98e2e2ee3c75746496234a7
 };
 
 }

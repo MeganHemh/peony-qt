@@ -364,7 +364,8 @@ QStringList FileItemProxyFilterSortModel::getAllFileUris()
     QStringList l;
     auto indexes = getAllFileIndexes();
     for (auto index : indexes) {
-        l<<index.data(FileItemModel::UriRole).toString();
+        if (index.column() == 0)
+            l<<index.data(FileItemModel::UriRole).toString();
     }
     return l;
 }

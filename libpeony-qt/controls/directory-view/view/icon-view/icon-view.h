@@ -78,10 +78,15 @@ public Q_SLOTS:
     int getSortOrder() override;
     void setSortOrder(int sortOrder) override;
 
+    void editUri(const QString &uri) override;
+    void editUris(const QStringList uris) override;
+
+    void resort();
+    void reportViewDirectoryChanged();
+
 protected:
     void changeZoomLevel();
     void resetEditTriggerTimer();
-    void connectDefaultMenuAction();
 
     void dragEnterEvent(QDragEnterEvent *e) override;
     void dragMoveEvent(QDragMoveEvent *e) override;
@@ -94,9 +99,6 @@ protected:
     void resizeEvent(QResizeEvent *e) override;
 
     void wheelEvent(QWheelEvent *e) override;
-
-protected:
-    void rebindProxy();
 
 private:
     QTimer m_edit_trigger_timer;

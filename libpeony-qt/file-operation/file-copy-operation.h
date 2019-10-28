@@ -10,6 +10,11 @@ namespace Peony {
 class FileNodeReporter;
 class FileNode;
 
+/*!
+ * \brief The FileCopyOperation class
+ * \todo
+ * implment duplicated copy. this should be consumed as the backup handler.
+ */
 class PEONYCORESHARED_EXPORT FileCopyOperation : public FileOperation
 {
     Q_OBJECT
@@ -19,6 +24,9 @@ public:
 
     void run() override;
     std::shared_ptr<FileOperationInfo> getOperationInfo() override {return m_info;}
+
+public Q_SLOTS:
+    void cancel() override;
 
 protected:
     ResponseType prehandle(GError *err);

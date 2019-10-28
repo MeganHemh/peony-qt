@@ -8,6 +8,7 @@
 
 #include "directory-view-factory-manager.h"
 #include "view-factory-model.h"
+#include "view-factory-sort-filter-model.h"
 
 #include "clipboard-utils.h"
 #include "file-operation-utils.h"
@@ -15,6 +16,11 @@
 #include "file-utils.h"
 
 #include "volume-manager.h"
+
+#include "properties-window.h"
+
+#include "file-launch-manager.h"
+#include "file-launch-action.h"
 
 #include <QDesktopServices>
 #include <QUrl>
@@ -39,6 +45,7 @@ DirectoryViewMenu::DirectoryViewMenu(FMWindow *window, QWidget *parent) : QMenu(
 {
     m_top_window = window;
     m_view = window->getCurrentPage()->getProxy()->getView();
+    //setParent(dynamic_cast<QWidget*>(m_view));
 
     m_directory = window->getCurrentUri();
     m_selections = window->getCurrentSelections();
@@ -149,12 +156,21 @@ const QList<QAction *> DirectoryViewMenu::constructOpenOpActions()
                 l<<addAction(QIcon::fromTheme("document-open-symbolic"), tr("&open \"%1\"").arg(displayName));
                 connect(l.last(), &QAction::triggered, [=](){
                     auto uri = m_selections.first();
-                    if (!QDesktopServices::openUrl(QUrl(uri))) {QMessageBox::critical(nullptr, tr("Open Failed"), tr("Can not open %1").arg(uri));}
+                    FileLaunchManager::openAsync(uri);
                 });
                 auto openWithAction = addAction(tr("open \"%1\" with...").arg(displayName));
                 //FIXME: add sub menu for open with action.
                 QMenu *openWithMenu = new QMenu(this);
-                openWithMenu->addAction("app1");
+                auto recommendActions = FileLaunchManager::getRecommendActions(m_selections.first());
+                for (auto action : recommendActions) {
+                    action->setParent(openWithMenu);
+                    openWithMenu->addAction(static_cast<QAction*>(action));
+                }
+                auto fallbackActions = FileLaunchManager::getFallbackActions(m_selections.first());
+                for (auto action : fallbackActions) {
+                    action->setParent(openWithMenu);
+                    openWithMenu->addAction(static_cast<QAction*>(action));
+                }
                 openWithMenu->addSeparator();
                 openWithMenu->addAction(tr("&More applications..."));
                 openWithAction->setMenu(openWithMenu);
@@ -162,7 +178,7 @@ const QList<QAction *> DirectoryViewMenu::constructOpenOpActions()
                 l<<addAction(tr("&Open"));
                 connect(l.last(), &QAction::triggered, [=](){
                     auto uri = m_selections.first();
-                    if (!QDesktopServices::openUrl(QUrl(uri))) {QMessageBox::critical(nullptr, tr("Open Failed"), tr("Can not open %1").arg(uri));}
+                    //FIXME:
                 });
             }
         } else {
@@ -183,7 +199,7 @@ const QList<QAction *> DirectoryViewMenu::constructOpenOpActions()
                     m_top_window->addNewTabs(dirs);
                 if (!files.isEmpty()) {
                     for (auto uri : files) {
-                        if (!QDesktopServices::openUrl(QUrl(uri))) {QMessageBox::critical(nullptr, tr("Open Failed"), tr("Can not open %1").arg(uri));}
+                        FileLaunchManager::openAsync(uri);
                     }
                 }
             });
@@ -198,7 +214,7 @@ const QList<QAction *> DirectoryViewMenu::constructViewOpActions()
     QList<QAction *> l;
 
     if (m_selections.isEmpty()) {
-        ViewFactoryModel model;
+        ViewFactorySortFilterModel model;
         model.setDirectoryUri(m_directory);
         auto viewNames = model.supportViewIds();
 
@@ -216,8 +232,7 @@ const QList<QAction *> DirectoryViewMenu::constructViewOpActions()
                     viewType->setChecked(true);
                 } else {
                     connect(viewType, &QAction::triggered, [=](){
-                        //FIXME:
-                        //switch view type request.
+                        m_top_window->beginSwitchView(viewType->text());
                     });
                 }
             }
@@ -277,24 +292,34 @@ const QList<QAction *> DirectoryViewMenu::constructFileOpActions()
 
     if (!m_is_trash && !m_is_search && !m_is_computer) {
         if (!m_selections.isEmpty()) {
-            l<<addAction(QIcon::fromTheme("gtk-copy"), tr("&Copy"));
+            l<<addAction(QIcon::fromTheme("edit-copy-symbolic"), tr("&Copy"));
             connect(l.last(), &QAction::triggered, [=](){
                 ClipboardUtils::setClipboardFiles(m_selections, false);
             });
-            l<<addAction(QIcon::fromTheme("gtk-cut"), tr("Cu&t"));
+            l<<addAction(QIcon::fromTheme("edit-cut-symbolic"), tr("Cu&t"));
             connect(l.last(), &QAction::triggered, [=](){
                 ClipboardUtils::setClipboardFiles(m_selections, true);
             });
-            l<<addAction(QIcon::fromTheme("user-trash"), tr("&Delete"));
+            l<<addAction(QIcon::fromTheme("edit-delete-symbolic"), tr("&Delete"));
             connect(l.last(), &QAction::triggered, [=](){
                 FileOperationUtils::trash(m_selections, true);
             });
+            if (m_selections.count() == 1) {
+                l<<addAction(QIcon::fromTheme("document-edit-symbolic"), tr("&Rename"));
+                connect(l.last(), &QAction::triggered, [=](){
+                    m_view->editUri(m_selections.first());
+                });
+            }
         } else {
-            auto pasteAction = addAction(QIcon::fromTheme("gtk-paste"), tr("&Paste"));
+            auto pasteAction = addAction(QIcon::fromTheme("edit-paste-symbolic"), tr("&Paste"));
             l<<pasteAction;
             pasteAction->setEnabled(ClipboardUtils::isClipboardHasFiles());
             connect(l.last(), &QAction::triggered, [=](){
                 ClipboardUtils::pasteClipboardFiles(m_directory);
+            });
+            l<<addAction(QIcon::fromTheme("view-refresh-symbolic"), tr("&Refresh"));
+            connect(l.last(), &QAction::triggered, [=](){
+                m_top_window->refresh();
             });
         }
     }
@@ -310,7 +335,17 @@ const QList<QAction *> DirectoryViewMenu::constructFilePropertiesActions()
         l<<addAction(QIcon::fromTheme("preview-file"), tr("&Properties"));
         connect(l.last(), &QAction::triggered, [=](){
             //FIXME:
-            //properties window
+            if (m_selections.isEmpty()) {
+                QStringList uris;
+                uris<<m_directory;
+                PropertiesWindow *p = new PropertiesWindow(uris);
+                p->setAttribute(Qt::WA_DeleteOnClose);
+                p->show();
+            } else {
+                PropertiesWindow *p = new PropertiesWindow(m_selections);
+                p->setAttribute(Qt::WA_DeleteOnClose);
+                p->show();
+            }
         });
     }
 
@@ -354,8 +389,9 @@ const QList<QAction *> DirectoryViewMenu::constructTrashActions()
                 auto result = QMessageBox::question(nullptr, tr("Delete Permanently"), tr("Are you sure that you want to delete these files? "
                                                                                           "Once you start a deletion, the files deleting will never be "
                                                                                           "restored again."));
-                if (result == QMessageBox::Ok) {
+                if (result == QMessageBox::Yes) {
                     auto uris = m_top_window->getCurrentAllFileUris();
+                    FileOperationUtils::remove(uris);
                 }
             });
         } else {
@@ -372,7 +408,7 @@ const QList<QAction *> DirectoryViewMenu::constructTrashActions()
                 auto result = QMessageBox::question(nullptr, tr("Delete Permanently"), tr("Are you sure that you want to delete these files? "
                                                                                           "Once you start a deletion, the files deleting will never be "
                                                                                           "restored again."));
-                if (result == QMessageBox::Ok) {
+                if (result == QMessageBox::Yes) {
                     FileOperationUtils::remove(m_selections);
                 }
             });
@@ -392,13 +428,25 @@ const QList<QAction *> DirectoryViewMenu::constructSearchActions()
         l<<addAction(QIcon::fromTheme("new-window-symbolc"), tr("Open Parent Folder in New Window"));
         connect(l.last(), &QAction::triggered, [=](){
             for (auto uri : m_selections) {
-                FMWindow *newWindow = new FMWindow(uri);
-                newWindow->show();
+                auto parentUri = FileUtils::getParentUri(uri);
+                if (!parentUri.isNull()) {
+                    FMWindow *newWindow = new FMWindow(uri);
+                    newWindow->show();
+                }
             }
         });
         l<<addAction(QIcon::fromTheme("new-tab-symbolic"), tr("Open Parent Folder in New Tab"));
         connect(l.last(), &QAction::triggered, [=](){
-            m_top_window->addNewTabs(m_selections);
+            QStringList parentUris;
+            for (auto uri : m_selections) {
+                auto parentUri = FileUtils::getParentUri(uri);
+                if (!uri.isNull()) {
+                    parentUris<<parentUri;
+                }
+            }
+            if (!parentUris.isEmpty()) {
+                m_top_window->addNewTabs(parentUris);
+            }
         });
     }
     return l;

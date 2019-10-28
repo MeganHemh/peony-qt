@@ -78,12 +78,12 @@ void FileEnumerator::setEnumerateDirectory(GFile *file)
     m_root_file = g_file_dup(file);
 }
 
-QList<std::shared_ptr<FileInfo>> FileEnumerator::getChildren()
+const QList<std::shared_ptr<FileInfo>> FileEnumerator::getChildren()
 {
     //qDebug()<<"FileEnumerator::getChildren():";
     QList<std::shared_ptr<FileInfo>> children;
     for (auto uri : *m_children_uris) {
-        auto file_info = FileInfo::fromUri(uri);
+        auto file_info = FileInfo::fromUri(uri, false);
         children<<file_info;
     }
     return children;
@@ -154,9 +154,15 @@ void FileEnumerator::enumerateSync()
                                                             m_cancellable,
                                                             nullptr);
 
-    enumerateChildren(enumerator);
+    if (enumerator) {
+        enumerateChildren(enumerator);
 
-    g_object_unref(enumerator);
+        g_file_enumerator_close_async(enumerator, 0, nullptr, nullptr, nullptr);
+        g_object_unref(enumerator);
+    } else {
+        Q_EMIT this->enumerateFinished(false);
+    }
+
     g_object_unref(target);
 }
 
@@ -289,10 +295,10 @@ GAsyncReadyCallback FileEnumerator::mount_enclosing_volume_callback(GFile *file,
             op->setAutoDelete();
             g_free(uri);
             //op->setAutoDelete();
-            connect(op, &MountOperation::cancelled, [p_this](){
+            p_this->connect(op, &MountOperation::cancelled, [p_this](){
                 Q_EMIT p_this->enumerateFinished(false);
             });
-            connect(op, &MountOperation::finished, [=](const std::shared_ptr<GErrorWrapper> &finished_err){
+            p_this->connect(op, &MountOperation::finished, [=](const std::shared_ptr<GErrorWrapper> &finished_err){
                 if (finished_err) {
                     qDebug()<<"finished err:"<<finished_err->code()<<finished_err->message();
                     if (finished_err->code() == G_IO_ERROR_PERMISSION_DENIED) {
@@ -350,6 +356,8 @@ GAsyncReadyCallback FileEnumerator::enumerator_next_files_async_ready_callback(G
     GList *files = g_file_enumerator_next_files_finish(enumerator,
                                                        res,
                                                        &err);
+
+    auto errPtr = GErrorWrapper::wrapFrom(err);
     if (!files && !err) {
         //if a directory children count is same with BATCH_SIZE,
         //just send finished signal.
@@ -363,7 +371,6 @@ GAsyncReadyCallback FileEnumerator::enumerator_next_files_async_ready_callback(G
     }
     if (err) {
         qDebug()<<"next_files_async:"<<err->code<<err->message;
-        g_error_free(err);
     }
 
     GList *l = files;

@@ -20,7 +20,9 @@ QString FileUtils::getQStringFromCString(char *c_string, bool free)
 QString FileUtils::getFileUri(const GFileWrapperPtr &file)
 {
     char *uri = g_file_get_uri(file.get()->get());
-    return getQStringFromCString(uri);
+    QUrl url = QString(uri);
+    g_free(uri);
+    return url.toDisplayString();
 }
 
 QString FileUtils::getFileBaseName(const GFileWrapperPtr &file)
@@ -181,4 +183,13 @@ const QString FileUtils::getParentUri(const QString &uri)
     auto parent = getFileParent(file);
     auto parentUri = getFileUri(parent);
     return parentUri == uri? nullptr: parentUri;
+}
+
+bool FileUtils::isFileExsit(const QString &uri)
+{
+    bool exist = false;
+    GFile *file = g_file_new_for_uri(uri.toUtf8().constData());
+    exist = g_file_query_exists(file, nullptr);
+    g_object_unref(file);
+    return exist;
 }

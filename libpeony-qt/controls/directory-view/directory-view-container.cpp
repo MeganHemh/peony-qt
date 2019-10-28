@@ -4,6 +4,8 @@
 #include "standard-view-proxy.h"
 #include "file-utils.h"
 
+#include "directory-view-factory-manager.h"
+
 #include "file-item-proxy-filter-sort-model.h"
 
 #include <QVBoxLayout>
@@ -161,8 +163,13 @@ void DirectoryViewContainer::switchViewType(const QString &viewId)
     if (!factory)
         return;
 
+    auto sortType = 0;
+    auto sortOrder = 0;
+
     auto oldView = m_proxy->getView();
     if (oldView) {
+        sortType = oldView->getSortType();
+        sortOrder = oldView->getSortOrder();
         m_layout->removeWidget(dynamic_cast<QWidget*>(oldView));
     }
     auto view = factory->create();
@@ -170,8 +177,12 @@ void DirectoryViewContainer::switchViewType(const QString &viewId)
     view->bindModel(m_model, m_proxy_model);
     view->setProxy(m_proxy);
 
+    view->setSortType(sortType);
+    view->setSortOrder(sortOrder);
+
     m_proxy->switchView(view);
     m_layout->addWidget(dynamic_cast<QWidget*>(view), Qt::AlignBottom);
+    DirectoryViewFactoryManager::getInstance()->setDefaultViewId(viewId);
 
     Q_EMIT viewTypeChanged();
 }
