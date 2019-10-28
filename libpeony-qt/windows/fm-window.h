@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include "peony-core_global.h"
 #include "advanced-location-bar.h"
+#include "advance-search-bar.h"
 #include <memory>
 
 #include <QTimer>
@@ -96,9 +97,8 @@ public Q_SLOTS:
     void forceStopLoading();
     void advanceSearch();
     void clearRecord();
-    void browsePath();
-    void searchFilter();
-    void filterUpdate();
+    void searchFilter(QString target_path, QString keyWord);
+    void filterUpdate(int type_index=0, int time_index=0, int size_index=0);
     void setShowHidden();
 
     void onPreviewPageSwitch(const QString &uri);
@@ -108,12 +108,14 @@ protected:
 
 public:
     //advance search filter options
-//    QStringList m_file_type_list = {"all", "file folder", "image", "video", "text file", "audio", "others"};
-//    QStringList m_file_mtime_list = {"all", "today", "this week", "this month", "this year", "year ago"};
-//    QStringList m_file_size_list = {"all", "tiny(0-16K)", "small(16k-1M)", "medium(1M-100M)", "big(100M-1G)","large(>1G)"};
-    QStringList m_file_type_list = {"全部", "文件夹", "图片", "视频", "纯文本", "音频", "其他"};
-    QStringList m_file_mtime_list = {"全部", "今天", "本周", "本月", "今年", "往年"};
-    QStringList m_file_size_list = {"全部", "极小(0-16K)", "小(16k-1M)", "中等(1M-100M)", "大(100M-1G)","很大(>1G)"};
+    bool m_update_condition = false;
+
+    QStringList m_file_type_list = {"all", "file folder", "image", "video", "text file", "audio", "others"};
+    QStringList m_file_mtime_list = {"all", "today", "this week", "this month", "this year", "year ago"};
+    QStringList m_file_size_list = {"all", "tiny(0-16K)", "small(16k-1M)", "medium(1M-100M)", "big(100M-1G)","large(>1G)"};
+//    QStringList m_file_type_list = {"全部", "文件夹", "图片", "视频", "纯文本", "音频", "其他"};
+//    QStringList m_file_mtime_list = {"全部", "今天", "本周", "本月", "今年", "往年"};
+//    QStringList m_file_size_list = {"全部", "极小(0-16K)", "小(16k-1M)", "中等(1M-100M)", "大(100M-1G)","很大(>1G)"};
 
 private:
     QSplitter *m_splitter;
@@ -126,24 +128,20 @@ private:
     StatusBar *m_status_bar;
 
     QWidget *m_filter;
-    QLineEdit *m_advanced_key;
-    QComboBox *typeViewCombox, *timeViewCombox, *sizeViewCombox;
-    AdvancedLocationBar *m_advance_bar;
+    AdvanceSearchBar *m_filter_bar;
 
     QPushButton *m_advanced_button;
     QPushButton *m_clear_record;
 
     QTimer m_operation_minimum_interval;
     bool m_is_loading = false;
-    bool m_filter_visible;
-    bool m_update_condition = false;
+    bool m_filter_visible = false;
     bool m_show_hidden_file = false;
 
     QString m_last_non_search_location;
-<<<<<<< HEAD
     QString m_advance_target_path;
-=======
 
+    QStackedWidget *m_side_bar_container = nullptr;
     PreviewPageContainer *m_preview_page_container = nullptr;
 };
 
@@ -157,7 +155,6 @@ class PreviewPageContainer : public QStackedWidget
     void removePage(PreviewPageIface *page);
     PreviewPageIface *getCurrentPage();
     bool isHidden() {return isVisible();}
->>>>>>> 813b7c4e285f5111d98e2e2ee3c75746496234a7
 };
 
 }

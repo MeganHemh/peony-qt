@@ -73,17 +73,19 @@ FMWindow::FMWindow(const QString &uri, QWidget *parent) : QMainWindow (parent)
     m_tab->addPage(uri);
 
     m_side_bar = new SideBar(this);
-    m_filter = new QWidget(this);
+    m_filter_bar = new AdvanceSearchBar(this);
+    m_filter = dynamic_cast<QWidget*>(m_filter_bar);
 
-    m_splitter->addWidget(m_filter);
-    m_splitter->addWidget(m_side_bar);
+    m_side_bar_container = new QStackedWidget(this);
+    m_side_bar_container->addWidget(m_side_bar);
+    m_side_bar_container->addWidget(m_filter);
+    m_side_bar_container->setCurrentWidget(m_side_bar);
+    m_splitter->addWidget(m_side_bar_container);
+
     m_splitter->addWidget(m_tab);
-<<<<<<< HEAD
     m_splitter->setStretchFactor(0, 0);
     m_splitter->setStretchFactor(1, 0);
-=======
     m_splitter->setStretchFactor(1, 1);
->>>>>>> 813b7c4e285f5111d98e2e2ee3c75746496234a7
     m_splitter->setStretchFactor(2, 1);
 
     m_tool_bar = new ToolBar(this, this);
@@ -91,12 +93,10 @@ FMWindow::FMWindow(const QString &uri, QWidget *parent) : QMainWindow (parent)
 
     m_search_bar = new SearchBar(this);
     m_advanced_button = new QPushButton(tr("advanced search"), nullptr);
-    m_advanced_button->setText("高级搜索");
-    m_advanced_button->setFixedWidth(80);
+    m_advanced_button->setFixedWidth(110);
     m_advanced_button->setStyleSheet("color: rgb(10,10,255)");
     m_clear_record = new QPushButton(tr("clear record"), nullptr);
-    m_clear_record->setText("清空记录");
-    m_clear_record->setFixedWidth(80);
+    m_clear_record->setFixedWidth(110);
     m_clear_record->setDisabled(true);
 
     m_preview_page_container = new PreviewPageContainer(this);
@@ -124,100 +124,6 @@ FMWindow::FMWindow(const QString &uri, QWidget *parent) : QMainWindow (parent)
     addToolBar(Qt::TopToolBarArea, t1);
     addToolBarBreak();
 
-    //add mutiple filter page
-    m_filter->setFixedWidth(160);
-    m_filter->setContentsMargins(0, 0, 0, 0);
-    QLabel *keyLabel = new QLabel(tr("Key Words"), m_filter);
-    keyLabel->setText("关键词");
-    m_advanced_key = new QLineEdit(m_filter);
-    m_advanced_key->setFixedWidth(120);
-    keyLabel->setBuddy(m_advanced_key);
-    m_advanced_key->setPlaceholderText(tr("input key words..."));
-    QLabel *searchLocation = new QLabel(tr("Search Location"), m_filter);
-    searchLocation->setText("搜索位置");
-    m_advance_bar = new AdvancedLocationBar(m_filter);
-    m_advance_bar->setFixedWidth(120);
-    m_advance_bar->updateLocation(uri);
-    m_advance_target_path = uri;
-
-    QPushButton *m_browse_button = new QPushButton(tr("browse"), nullptr);
-    m_browse_button->setText("浏览");
-    m_browse_button->setFixedWidth(80);
-
-    QLabel *fileType = new QLabel(tr("File Type"), m_filter);
-    fileType->setText("搜索类型");
-    fileType->setFixedWidth(120);
-    typeViewCombox = new QComboBox(m_filter);
-    typeViewCombox->setToolTip(tr("Choose File Type"));
-    typeViewCombox->setFixedWidth(120);
-    auto model = new QStringListModel(m_filter);
-    model->setStringList(m_file_type_list);
-    typeViewCombox->setModel(model);
-
-    QLabel *modifyTime = new QLabel(tr("Modify Time"), m_filter);
-    modifyTime->setText("修改时间");
-    modifyTime->setFixedWidth(120);
-    timeViewCombox = new QComboBox(m_filter);
-    timeViewCombox->setToolTip(tr("Choose Modify Time"));
-    timeViewCombox->setFixedWidth(120);
-    auto time_model = new QStringListModel(m_filter);
-    time_model->setStringList(m_file_mtime_list);
-    timeViewCombox->setModel(time_model);
-
-    QLabel *fileSize = new QLabel(tr("File Size"), m_filter);
-    fileSize->setText("文件大小");
-    fileSize->setFixedWidth(120);
-    sizeViewCombox = new QComboBox(m_filter);
-    sizeViewCombox->setToolTip(tr("Choose file size"));
-    sizeViewCombox->setFixedWidth(120);
-    auto size_model = new QStringListModel(m_filter);
-    size_model->setStringList(m_file_size_list);
-    sizeViewCombox->setModel(size_model);
-
-    QPushButton *m_show_hidden_button = new QPushButton(tr("show hidden file"), nullptr);
-    m_show_hidden_button->setText("显示隐藏文件");
-    m_show_hidden_button->setFixedWidth(120);
-
-    QPushButton *m_filter_button = new QPushButton(tr("search"), nullptr);
-    m_filter_button->setText("搜索");
-    m_filter_button->setFixedWidth(80);
-    m_filter_button->setToolTip("start search");
-
-    QFormLayout *topLayout = new QFormLayout();
-    topLayout->setContentsMargins(10, 10, 10, 10);
-    QWidget *b1 = new QWidget(m_filter);
-    QHBoxLayout *middleLayout = new QHBoxLayout(b1);
-    b1->setLayout(middleLayout);
-    QWidget *b2 = new QWidget(m_filter);
-    QHBoxLayout *bottomLayout = new QHBoxLayout(b2);
-    b2->setLayout(bottomLayout);
-    QVBoxLayout *mainLayout = new QVBoxLayout(m_filter);
-    mainLayout->addLayout(topLayout);
-    mainLayout->addLayout(middleLayout);
-    mainLayout->addLayout(bottomLayout);
-
-    topLayout->addWidget(keyLabel);
-    topLayout->addWidget(m_advanced_key);
-    topLayout->addWidget(searchLocation);
-    topLayout->addWidget(m_advance_bar);
-    middleLayout->addWidget(m_browse_button, Qt::AlignCenter);
-    middleLayout->setContentsMargins(10,10,10,10);
-    topLayout->addWidget(b1);
-    topLayout->addWidget(fileType);
-    topLayout->addWidget(typeViewCombox);
-    topLayout->addWidget(modifyTime);
-    topLayout->addWidget(timeViewCombox);
-    topLayout->addWidget(fileSize);
-    topLayout->addWidget(sizeViewCombox);
-    topLayout->addWidget(m_show_hidden_button);
-    bottomLayout->setContentsMargins(10,30,10,10);
-    bottomLayout->addWidget(m_filter_button, Qt::AlignCenter);
-    topLayout->addWidget(b2);
-
-    m_filter_visible = false;            //default visible setting
-    m_filter->setVisible(m_filter_visible);
-    //end mutiple filter
-
     m_navigation_bar = new NavigationBar(this);
     m_navigation_bar->setMovable(false);
     m_navigation_bar->bindContainer(m_tab->getActivePage());
@@ -239,12 +145,6 @@ FMWindow::FMWindow(const QString &uri, QWidget *parent) : QMainWindow (parent)
     connect(m_navigation_bar, &NavigationBar::refreshRequest, this, &FMWindow::refresh);
     connect(m_advanced_button, &QPushButton::clicked, this, &FMWindow::advanceSearch);
     connect(m_clear_record, &QPushButton::clicked, this, &FMWindow::clearRecord);
-    connect(m_browse_button, &QPushButton::clicked, this, &FMWindow::browsePath);
-    connect(m_filter_button, &QPushButton::clicked, this, &FMWindow::searchFilter);
-    connect(m_show_hidden_button, &QPushButton::clicked, this, &FMWindow::setShowHidden);
-    connect(typeViewCombox, QOverload<int>::of(&QComboBox::currentIndexChanged),this, &FMWindow::filterUpdate);
-    connect(timeViewCombox, QOverload<int>::of(&QComboBox::currentIndexChanged),this, &FMWindow::filterUpdate);
-    connect(sizeViewCombox, QOverload<int>::of(&QComboBox::currentIndexChanged),this, &FMWindow::filterUpdate);
 
     //tab changed
     connect(m_tab, &TabPage::currentActiveViewChanged, [=](){
@@ -331,13 +231,12 @@ FMWindow::FMWindow(const QString &uri, QWidget *parent) : QMainWindow (parent)
     addAction(stopLoadingAction);
     connect(stopLoadingAction, &QAction::triggered, this, &FMWindow::forceStopLoading);
 
-<<<<<<< HEAD
     //show hidden action
     QAction *showHiddenAction = new QAction(this);
     showHiddenAction->setShortcut(QKeySequence(tr("Ctrl+H", "Show|Hidden")));
     addAction(showHiddenAction);
     connect(showHiddenAction, &QAction::triggered, this, &FMWindow::setShowHidden);
-=======
+
     auto undoAction = new QAction(QIcon::fromTheme("edit-undo-symbolic"), tr("Undo"), this);
     undoAction->setShortcut(QKeySequence::Undo);
     addAction(undoAction);
@@ -351,7 +250,6 @@ FMWindow::FMWindow(const QString &uri, QWidget *parent) : QMainWindow (parent)
     connect(redoAction, &QAction::triggered, [=](){
         FileOperationManager::getInstance()->redo();
     });
->>>>>>> 813b7c4e285f5111d98e2e2ee3c75746496234a7
 
     //menu
     m_tab->connect(m_tab, &TabPage::menuRequest, [=](const QPoint &pos){
@@ -361,14 +259,6 @@ FMWindow::FMWindow(const QString &uri, QWidget *parent) : QMainWindow (parent)
         menu.exec(pos);
     });
 
-<<<<<<< HEAD
-    //advance search change Location
-    connect(m_advance_bar, &AdvancedLocationBar::updateWindowLocationRequest, [=](const QString &uri){
-        if (uri.contains("file://"))
-            m_advance_target_path = uri;
-        else
-            m_advance_target_path = "file://" + uri;
-=======
     //preview page
     connect(m_navigation_bar, &NavigationBar::switchPreviewPageRequest,
             this, &FMWindow::onPreviewPageSwitch);
@@ -399,7 +289,6 @@ FMWindow::FMWindow(const QString &uri, QWidget *parent) : QMainWindow (parent)
                 m_preview_page_container->getCurrentPage()->startPreview();
             }
         }
->>>>>>> 813b7c4e285f5111d98e2e2ee3c75746496234a7
     });
 }
 
@@ -497,62 +386,54 @@ void FMWindow::refresh()
 
 void FMWindow::advanceSearch()
 {
-    qDebug()<<"advanceSearch clicked";
-    if (! m_filter_visible)
+    //qDebug()<<"advanceSearch clicked";
+    if (m_side_bar_container->currentWidget() == m_filter)
     {
+        //clear filter
+        filterUpdate();
+        m_filter_bar->clearData();
+        m_side_bar_container->setCurrentWidget(m_side_bar);
+        m_filter_visible = false;
+    }
+    else
+    {
+        m_filter_visible = true;
         //before show, update cur uri
         QString target_path = getCurrentUri();
         if (target_path.contains("file://"))
-            m_advance_target_path = target_path;
+             m_advance_target_path = target_path;
         else
-            m_advance_target_path = "file://" + target_path;
-        m_advance_bar->updateLocation(target_path);
+             m_advance_target_path = "file://" + target_path;
+
+        m_filter_bar->updateLocation(target_path);
+        m_side_bar_container->setCurrentWidget(m_filter);
     }
-    m_filter_visible = !m_filter_visible;
-    m_filter->setVisible(m_filter_visible);
-    //m_side_bar->setVisible(!m_filter_visible);
 }
 
 void FMWindow::clearRecord()
 {
-    qDebug()<<"clearRecord clicked";
+    //qDebug()<<"clearRecord clicked";
     m_search_bar->clear_search_record();
     m_clear_record->setDisabled(true);
 }
 
-void FMWindow::browsePath()
+void FMWindow::searchFilter(QString target_path, QString keyWord)
 {
-    QString target_path = QFileDialog::getExistingDirectory(this, "caption", getCurrentUri(), QFileDialog::ShowDirsOnly);
-    qDebug()<<"browsePath Opened:"<<target_path;
-    //add root prefix
-    if (target_path.contains("file://"))
-        m_advance_target_path = target_path;
-    else
-        m_advance_target_path = "file://" + target_path;
-    m_advance_bar->updateLocation(target_path);
-}
-
-void FMWindow::searchFilter()
-{
-    qDebug()<<"searchFilter clicked"<<m_advanced_key->text()<<"path:"<<m_advance_target_path;
-    if (m_advanced_key->text() == nullptr || m_advance_target_path == nullptr) //must have key words and target path
-        return;
-
-    auto targetUri = SearchVFSUriParser::parseSearchKey(m_advance_target_path, m_advanced_key->text());
+    auto targetUri = SearchVFSUriParser::parseSearchKey(target_path, keyWord);
     //qDebug()<<"targeturi:"<<targetUri;
     m_update_condition = true;
     this->goToUri(targetUri, true);
 }
 
-void FMWindow::filterUpdate()
+void FMWindow::filterUpdate(int type_index, int time_index, int size_index)
 {
-    qDebug()<<"filterUpdate:";
-    m_tab->getActivePage()->setSortFilter(typeViewCombox->currentIndex(), timeViewCombox->currentIndex(), sizeViewCombox->currentIndex());
+    //qDebug()<<"filterUpdate:";
+    m_tab->getActivePage()->setSortFilter(type_index, time_index, size_index);
 }
 
 void FMWindow::setShowHidden()
 {
-    qDebug()<<"setShowHidden"<<m_show_hidden_file;
+    //qDebug()<<"setShowHidden"<<m_show_hidden_file;
     m_show_hidden_file = !m_show_hidden_file;
     m_tab->getActivePage()->setShowHidden(m_show_hidden_file);
 }
